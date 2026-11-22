@@ -1,4 +1,5 @@
 import os
+import glob
 import json
 import subprocess
 
@@ -6,26 +7,49 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-CLIP_LEN = 55   # clip length in seconds (keep under 60 for Shorts)
-STEP = 60       # how far to move forward in the source each day
+CLIP_LEN = 55       # clip length in seconds (keep under 60 for Shorts)
+STEP = 60           # how far to move forward in the video each day
 PRIVACY = "public"  # "public", "unlisted" or "private"
+EXTS = ("mp4", "mov", "mkv", "webm", "avi")
 
 
 def load_state():
     if os.path.exists("state.json"):
         with open("state.json") as f:
-            return json.load(f)
-    return {"source": 0, "offset": 0, "count": 0}
+            s = json.load(f)
+    else:
+        s = {}
+    return {
+        "file": s.get("file"),
+        "offset": s.get("offset", 0),
+        "count": s.get("count", 0),
+        "done": s.get("done", []),
+    }
 
 
 def save_state(state):
     with open("state.json", "w") as f:
-        json.dump(state, f)
+        json.dump(state, f, indent=1)
 
 
 def read_lines(path):
+    if not os.path.exists(path):
+        return []
     with open(path, encoding="utf-8") as f:
         return [l.strip() for l in f if l.strip() and not l.startswith("#")]
+
+
+def find_videos():
+    """All video files in the repo root and in the videos/ folder."""
+    found = []
+    for folder in (".", "videos"):
+        for ext in EXTS:
+            found += glob.glob(os.path.join(folder, f"*.{ext}"))
+            found += glob.glob(os.path.join(folder, f"*.{ext.upper()}"))
+    skip = {"clip.mp4", "source.mp4"}
+    found = [os.path.normpath(p) for p in found
+             if os.path.basename(p) not in skip]
+    return sorted(set(found))
 
 
 def duration(path):
@@ -47,43 +71,50 @@ def get_youtube():
     return build("youtube", "v3", credentials=creds)
 
 
-def get_source_file(src):
-    """Return a local path for the source (download if it's a URL)."""
-    if src.startswith("http"):
-        subprocess.run(
-            ["yt-dlp", "-f", "mp4/best", "-o", "source.mp4",
-             "--force-overwrites", src],
-            check=True,
-        )
-        return "source.mp4"
-    if not os.path.exists(src):
-        raise FileNotFoundError(f"Source file not found: {src}")
-    return src
+def pick_video(state):
+    videos = find_videos()
+    # keep working on the current video if it still exists
+    if state["file"] and state["file"] in videos:
+        return state["file"]
+    # otherwise take the first video not used yet
+    for v in videos:
+        if v not in state["done"]:
+            state["file"] = v
+            state["offset"] = 0
+            return v
+    return None
 
 
 def main():
     state = load_state()
-    sources = read_lines("sources.txt")
     titles = read_lines("titles.txt")
 
-    if state["source"] >= len(sources):
-        print("No more sources. Add more lines to sources.txt")
+    video = pick_video(state)
+    if video is None:
+        print("No new videos found. Upload a video (.mp4) to the repo.")
+        save_state(state)
         return
 
-    src_path = get_source_file(sources[state["source"]])
-    total = duration(src_path)
+    total = duration(video)
+    print(f"Using {video} ({total:.0f}s), offset {state['offset']}s")
 
-    if state["offset"] + CLIP_LEN > total:
-        state["source"] += 1
+    if total <= CLIP_LEN + 1:
+        # short video: upload the whole thing (max 60s for Shorts)
+        start, length = 0, min(total, 60)
+    elif state["offset"] + CLIP_LEN > total:
+        # this video is finished, move on to the next one
+        state["done"].append(video)
+        state["file"] = None
         state["offset"] = 0
         save_state(state)
-        print("Source finished. Will use the next source on the next run.")
+        print("Video finished. Next video will be used on the next run.")
         return
+    else:
+        start, length = state["offset"], CLIP_LEN
 
-    # Cut the clip and convert to vertical 9:16 (Shorts format)
     subprocess.run(
-        ["ffmpeg", "-y", "-ss", str(state["offset"]), "-i", src_path,
-         "-t", str(CLIP_LEN),
+        ["ffmpeg", "-y", "-ss", str(start), "-i", video,
+         "-t", str(length),
          "-vf", "crop=ih*9/16:ih,scale=1080:1920",
          "-c:v", "libx264", "-preset", "fast", "-c:a", "aac", "clip.mp4"],
         check=True,
@@ -108,8 +139,13 @@ def main():
                              media_body=media).execute()
     print("Uploaded video id:", res["id"])
 
-    state["offset"] += STEP
     state["count"] += 1
+    if total <= CLIP_LEN + 1:
+        state["done"].append(video)
+        state["file"] = None
+        state["offset"] = 0
+    else:
+        state["offset"] += STEP
     save_state(state)
 
 
