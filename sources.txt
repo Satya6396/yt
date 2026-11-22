@@ -1,0 +1,4 @@
+# One source per line. Lines starting with # are ignored.
+# Use either a direct video URL (only content you own / have rights to)
+# or a local file path inside this repo, e.g. videos/my_video.mp4
+videos/my_video.mp4
