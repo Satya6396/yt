@@ -21,7 +21,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu-core
+          sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu-core fonts-noto-core
           pip install -r requirements.txt
 
       - name: Make video and upload
@@ -29,7 +29,9 @@ jobs:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
-          VIDEO_LANG: hinglish
+          VIDEO_LANG: hinglish    # hinglish, hi (Hindi) or en (English)
+          SCRIPTS_FILE: scripts_hinglish.json,scripts_facts_hinglish.json   # played in this order
+          NICHE: amazing facts about famous places, temples, cars and celebrities
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
