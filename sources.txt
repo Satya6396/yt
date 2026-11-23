@@ -1,4 +1,0 @@
-# One source per line. Lines starting with # are ignored.
-# Use either a direct video URL (only content you own / have rights to)
-# or a local file path inside this repo, e.g. videos/my_video.mp4
-Placement Portal - Google Chrome 2026-03-11 13-18-14.mp4
