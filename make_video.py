@@ -10,7 +10,12 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-VOICE = os.environ.get("TTS_VOICE", "en-IN-NeerjaNeural")  # e.g. en-IN-PrabhatNeural, en-US-AriaNeural
+LANG = (os.environ.get("VIDEO_LANG") or "en").lower()      # "en", "hi" (Hindi) or "hinglish"
+DEFAULT_VOICES = {"en": "en-IN-NeerjaNeural", "hi": "hi-IN-SwaraNeural",
+                  "hinglish": "en-IN-NeerjaNeural"}
+# other voices: en-IN-PrabhatNeural, hi-IN-MadhurNeural (male)
+VOICE = os.environ.get("TTS_VOICE") or DEFAULT_VOICES.get(LANG, "en-IN-NeerjaNeural")
+FONT = os.environ.get("VIDEO_FONT") or ("Noto Sans Devanagari" if LANG == "hi" else "DejaVu Sans")
 W, H = 1080, 1920
 PAD = 0.25          # seconds of silence after each scene
 WORK = "work"
@@ -58,7 +63,7 @@ def tts(text, out_mp3):
     except Exception as e:
         print("edge-tts failed, trying gTTS:", e)
     from gtts import gTTS
-    gTTS(text, lang="en", tld="co.in").save(out_mp3)
+    gTTS(text, lang="hi" if LANG == "hi" else "en", tld="co.in").save(out_mp3)
 
 
 # ---------------- footage (Pexels, free licence) ----------------
@@ -185,7 +190,7 @@ def make_ass(scenes_timing, path):
         "Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,"
         "BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,"
         "BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding\n"
-        "Style: Default,DejaVu Sans,76,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,"
+        f"Style: Default,{FONT},76,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,"
         "-1,0,0,0,100,100,0,0,1,6,2,2,80,80,520,1\n\n"
         "[Events]\nFormat: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text\n"
     )

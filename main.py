@@ -9,6 +9,8 @@ from googleapiclient.http import MediaFileUpload
 
 from make_video import build_video, provider_name
 
+LANG = (os.environ.get("VIDEO_LANG") or "en").lower()   # "en", "hi" or "hinglish"
+SCRIPTS_FILE = {"hi": "scripts_hi.json", "hinglish": "scripts_hinglish.json"}.get(LANG, "scripts.json")
 NICHE = "study tips and productivity tips for students"
 PRIVACY = "public"  # "public", "unlisted" or "private"
 GEMINI_MODELS = ["gemini-2.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite"]
@@ -46,8 +48,12 @@ def gemini_script(recent):
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
         return None
+    language = {"hi": "Hindi (Devanagari script)",
+                "hinglish": "Hinglish (Hindi written in English/Roman letters, as people speak in India)"}.get(LANG, "English")
     prompt = (
         f"Write a script for a 40-second YouTube Short about {NICHE}. "
+        f"Write the title, description and narration in {language}, but keep the "
+        "footage search query \"q\" in English. "
         "Give practical, well-established advice only; no made-up statistics. "
         "Reply as JSON: {\"title\": \"max 60 chars\", \"description\": \"1-2 sentences\", "
         "\"scenes\": [{\"text\": \"about 16 words of narration\", "
@@ -77,7 +83,7 @@ def gemini_script(recent):
 
 def main():
     state = load_state()
-    with open("scripts.json", encoding="utf-8") as f:
+    with open(SCRIPTS_FILE, encoding="utf-8") as f:
         scripts = json.load(f)
 
     if state["script_index"] < len(scripts):
@@ -96,7 +102,7 @@ def main():
     title = f"{script['title']} #Shorts"[:100]
     credit_line = (f"Stock footage: {provider_name()}"
                    + (f" - {', '.join(credits)}" if credits else ""))
-    description = f"{script.get('description', script['title'])}\n\n{credit_line}\n\n#shorts #studytips"
+    description = f"{script.get('description', script['title'])}\n\n{credit_line}\n\n#shorts #studytips" + (" #hindi" if LANG in ("hi", "hinglish") else "")
 
     yt = get_youtube()
     body = {
