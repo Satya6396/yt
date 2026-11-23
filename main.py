@@ -10,8 +10,10 @@ from googleapiclient.http import MediaFileUpload
 from make_video import build_video, provider_name
 
 LANG = (os.environ.get("VIDEO_LANG") or "en").lower()   # "en", "hi" or "hinglish"
-SCRIPTS_FILE = {"hi": "scripts_hi.json", "hinglish": "scripts_hinglish.json"}.get(LANG, "scripts.json")
-NICHE = "study tips and productivity tips for students"
+# Script files are played in order. Override with SCRIPTS_FILE="a.json,b.json" in daily.yml.
+SCRIPTS_FILE = (os.environ.get("SCRIPTS_FILE")
+                or {"hi": "scripts_hi.json", "hinglish": "scripts_hinglish.json"}.get(LANG, "scripts.json"))
+NICHE = os.environ.get("NICHE") or "study tips and productivity tips for students"
 PRIVACY = "public"  # "public", "unlisted" or "private"
 GEMINI_MODELS = ["gemini-2.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite"]
 
@@ -83,8 +85,10 @@ def gemini_script(recent):
 
 def main():
     state = load_state()
-    with open(SCRIPTS_FILE, encoding="utf-8") as f:
-        scripts = json.load(f)
+    scripts = []
+    for name in SCRIPTS_FILE.split(","):
+        with open(name.strip(), encoding="utf-8") as f:
+            scripts += json.load(f)
 
     if state["script_index"] < len(scripts):
         script = scripts[state["script_index"]]
@@ -102,7 +106,8 @@ def main():
     title = f"{script['title']} #Shorts"[:100]
     credit_line = (f"Stock footage: {provider_name()}"
                    + (f" - {', '.join(credits)}" if credits else ""))
-    description = f"{script.get('description', script['title'])}\n\n{credit_line}\n\n#shorts #studytips" + (" #hindi" if LANG in ("hi", "hinglish") else "")
+    hashtags = script.get("hashtags") or ("#shorts #studytips" + (" #hindi" if LANG in ("hi", "hinglish") else ""))
+    description = f"{script.get('description', script['title'])}\n\n{credit_line}\n\n{hashtags}"
 
     yt = get_youtube()
     body = {
@@ -110,7 +115,7 @@ def main():
             "title": title,
             "description": description[:4900],
             "tags": script.get("tags", ["study tips", "productivity", "students", "shorts"]),
-            "categoryId": "27",  # Education
+            "categoryId": str(script.get("category", "27")),  # 27 Education, 19 Travel, 2 Autos, 24 Entertainment
         },
         "status": {"privacyStatus": PRIVACY, "selfDeclaredMadeForKids": False},
     }
