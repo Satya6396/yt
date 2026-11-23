@@ -1,0 +1,122 @@
+[
+ {"title": "Study Smarter With The Pomodoro Method",
+  "description": "A simple focus method to help you study without burning out.",
+  "scenes": [
+   {"text": "Struggling to focus while studying? Try this simple method used by millions of students.", "q": "student studying at desk"},
+   {"text": "It's called the Pomodoro technique. Set a timer for twenty five minutes and work on just one task.", "q": "timer clock close up"},
+   {"text": "No phone, no extra tabs, no distractions. Just you and the task until the timer rings.", "q": "person putting phone away"},
+   {"text": "Then take a five minute break. Stretch, drink some water, and look away from the screen.", "q": "woman stretching at desk"},
+   {"text": "After four rounds, take a longer break of fifteen to thirty minutes.", "q": "relaxing coffee break"},
+   {"text": "Short bursts of focus beat long, tired hours. Try one round today and follow for more study tips.", "q": "laptop notebook study"}
+  ]},
+ {"title": "Stop Re-Reading Your Notes! Do This Instead",
+  "description": "Active recall is one of the most effective ways to study.",
+  "scenes": [
+   {"text": "Re-reading your notes feels productive, but it's one of the weakest ways to study.", "q": "student reading book"},
+   {"text": "A better way is active recall. Close the book and try to write down everything you remember.", "q": "writing in notebook close up"},
+   {"text": "Struggling to remember is the point. That effort is what makes memories stronger.", "q": "thinking student"},
+   {"text": "Check your notes, fix the gaps, and then test yourself again.", "q": "highlighter notes"},
+   {"text": "Flashcards and practice questions are easy ways to do this every day.", "q": "flashcards"},
+   {"text": "Test yourself more and re-read less. Try it for your next exam, and follow for more tips.", "q": "exam classroom"}
+  ]},
+ {"title": "Why You Forget Everything After Cramming",
+  "description": "Spaced repetition helps you remember what you study for longer.",
+  "scenes": [
+   {"text": "Why do we forget what we study so fast? Because we cram everything into one night.", "q": "tired student night"},
+   {"text": "Spaced repetition fixes this. Review the same topic after one day, then three days, then a week.", "q": "calendar planner"},
+   {"text": "Each review tells your brain that this information matters, so it stays longer.", "q": "brain neurons"},
+   {"text": "Apps like Anki can schedule reviews for you, or you can simply use a calendar.", "q": "smartphone app study"},
+   {"text": "Ten minutes of review spread across the week beats three hours of cramming.", "q": "student walking campus"},
+   {"text": "Plan your reviews today and thank yourself later. Follow for more study tips.", "q": "planner pen desk"}
+  ]},
+ {"title": "The Feynman Trick To Know If You Really Understand",
+  "description": "Explain it simply to find out what you really know.",
+  "scenes": [
+   {"text": "Here's a trick to find out if you really understand something.", "q": "lightbulb idea"},
+   {"text": "Pick a topic and explain it in simple words, as if you were teaching a ten year old.", "q": "teacher explaining whiteboard"},
+   {"text": "Where you get stuck or use big confusing words, that's where you don't understand it yet.", "q": "confused student"},
+   {"text": "Go back to your notes, learn that part, and explain it again, simpler this time.", "q": "student notes library"},
+   {"text": "If you can explain it simply, you truly know it.", "q": "student presenting"},
+   {"text": "Try this with your hardest topic today, and follow for more.", "q": "studying desk lamp"}
+  ]},
+ {"title": "Why All Nighters Before Exams Backfire",
+  "description": "Sleep is part of studying. Here's why.",
+  "scenes": [
+   {"text": "Pulling an all nighter before an exam? That may hurt you more than it helps.", "q": "tired student yawning"},
+   {"text": "Sleep is when your brain sorts and stores what you learned during the day.", "q": "person sleeping bed"},
+   {"text": "Without enough sleep, it's harder to focus, remember things, and stay calm.", "q": "alarm clock morning"},
+   {"text": "Keep a steady sleep schedule, and stay away from screens for the last hour before bed.", "q": "phone bedside night"},
+   {"text": "Finish studying earlier and sleep well. Your exam brain will thank you.", "q": "sunrise window morning"},
+   {"text": "Good sleep is a study tip too. Follow for more.", "q": "cozy bedroom"}
+  ]},
+ {"title": "Your Phone Is Killing Your Focus",
+  "description": "A simple rule to stop phone distractions while studying.",
+  "scenes": [
+   {"text": "Your phone is the biggest enemy of your focus.", "q": "scrolling phone"},
+   {"text": "Even a buzz on the table can pull your attention away from your work.", "q": "phone notification table"},
+   {"text": "Put your phone in another room while you study, or at least turn on do not disturb.", "q": "person leaving phone"},
+   {"text": "Use it as a reward after your study block instead of a constant interruption.", "q": "happy student break"},
+   {"text": "You'll finish faster and feel less tired.", "q": "focused student laptop"},
+   {"text": "Try one phone free hour today, and follow for more study tips.", "q": "quiet library study"}
+  ]},
+ {"title": "Plan Tomorrow Tonight For An Easier Morning",
+  "description": "A two minute habit that makes your day easier.",
+  "scenes": [
+   {"text": "Want an easier morning? Plan your day the night before.", "q": "writing planner night"},
+   {"text": "Write down the top three tasks you must finish tomorrow.", "q": "to do list notebook"},
+   {"text": "When you wake up, you won't waste time deciding what to do.", "q": "morning routine"},
+   {"text": "Keep your bag, notes, and water bottle ready so you can start right away.", "q": "packing backpack"},
+   {"text": "Starting is the hardest part, and a plan makes it simple.", "q": "walking to school morning"},
+   {"text": "Take two minutes tonight to plan tomorrow. Follow for more.", "q": "desk lamp night"}
+  ]},
+ {"title": "Eat The Frog: Beat Procrastination",
+  "description": "Do the hardest task first and everything else gets easier.",
+  "scenes": [
+   {"text": "Do you keep putting off your hardest task? Here's a simple rule.", "q": "procrastination desk"},
+   {"text": "Do the hardest or most important task first, when your energy is highest.", "q": "morning coffee working"},
+   {"text": "People call it eating the frog. Once it's done, everything else feels easier.", "q": "relieved smiling laptop"},
+   {"text": "Don't check messages or social media before you begin.", "q": "typing keyboard close up"},
+   {"text": "Even thirty focused minutes on the hard task is a big win.", "q": "clock time lapse"},
+   {"text": "So, what's your frog for today? Follow for more productivity tips.", "q": "sunrise city"}
+  ]},
+ {"title": "Stuck While Studying? Do This For 5 Minutes",
+  "description": "A short walk can help you reset your focus.",
+  "scenes": [
+   {"text": "Feeling stuck while studying? Don't just stare at the page.", "q": "frustrated student"},
+   {"text": "Stand up and take a short walk for five minutes.", "q": "walking in park"},
+   {"text": "Moving your body and getting fresh air can help you reset and think more clearly.", "q": "fresh air nature walk"},
+   {"text": "Leave your phone behind so your mind can really rest.", "q": "walking among trees"},
+   {"text": "Then come back and start again with a clear head.", "q": "student back at desk"},
+   {"text": "A short break can save you hours. Follow for more.", "q": "clock close up"}
+  ]},
+ {"title": "Don't Study On An Empty Stomach",
+  "description": "Simple food and water habits for better focus.",
+  "scenes": [
+   {"text": "Your brain needs fuel, so don't study on an empty stomach.", "q": "healthy breakfast"},
+   {"text": "Drink water regularly, because being dehydrated can make it harder to concentrate.", "q": "drinking water glass"},
+   {"text": "Keep simple snacks like fruit or nuts near your desk instead of chips.", "q": "fruit nuts snack"},
+   {"text": "Eat regular meals so your energy stays steady through the day.", "q": "family meal table"},
+   {"text": "Small habits like these make long study sessions easier.", "q": "student studying snack"},
+   {"text": "Drink a glass of water right now, and follow for more.", "q": "pouring water glass"}
+  ]},
+ {"title": "Multitasking Is Making You Slower",
+  "description": "Why single-tasking beats multitasking.",
+  "scenes": [
+   {"text": "Think you're good at multitasking? Your brain says otherwise.", "q": "multitasking laptop phone"},
+   {"text": "Switching between tasks makes you slower and more likely to make mistakes.", "q": "messy busy desk"},
+   {"text": "Pick one task, close everything else, and work on it until it's done.", "q": "clean desk laptop"},
+   {"text": "Keep a notebook nearby to jot down random thoughts, then get back to your task.", "q": "writing notes pen"},
+   {"text": "One task at a time feels slower, but it finishes faster.", "q": "calm focused work"},
+   {"text": "Try single tasking for one session today. Follow for more.", "q": "student studying focus"}
+  ]},
+ {"title": "The 2 Minute Rule To Start Studying",
+  "description": "Can't start? Use this trick.",
+  "scenes": [
+   {"text": "Can't get yourself to start studying? Use the two minute rule.", "q": "student procrastinating bed"},
+   {"text": "Tell yourself you'll study for just two minutes, nothing more.", "q": "stopwatch hand"},
+   {"text": "Open your book, read one page, or solve one question.", "q": "open book pages"},
+   {"text": "Starting is the hardest part. Once you begin, it's easier to keep going.", "q": "person typing laptop"},
+   {"text": "And if you stop after two minutes, you still did more than nothing.", "q": "checklist tick"},
+   {"text": "Start your two minutes now, and follow for more study tips.", "q": "student desk morning light"}
+  ]}
+]
