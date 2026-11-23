@@ -1,20 +1,16 @@
 import os
-import glob
+import sys
 import json
-import base64
 import urllib.request
-import subprocess
 
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-CLIP_LEN = 55       # clip length in seconds (keep under 60 for Shorts)
-STEP = 60           # how far to move forward in the video each day
-PRIVACY = "public"  # "public", "unlisted" or "private"
-EXTS = ("mp4", "mov", "mkv", "webm", "avi")
+from make_video import build_video, provider_name
 
-# Gemini models are tried in this order until one works (free tier).
+NICHE = "study tips and productivity tips for students"
+PRIVACY = "public"  # "public", "unlisted" or "private"
 GEMINI_MODELS = ["gemini-2.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite"]
 
 
@@ -23,46 +19,15 @@ def load_state():
     if os.path.exists("state.json"):
         with open("state.json") as f:
             s = json.load(f)
-    return {
-        "file": s.get("file"),
-        "offset": s.get("offset", 0),
-        "count": s.get("count", 0),
-        "done": s.get("done", []),
-        "recent": s.get("recent", []),
-    }
+    s.setdefault("script_index", 0)
+    s.setdefault("count", 0)
+    s.setdefault("recent", [])
+    return s
 
 
 def save_state(state):
     with open("state.json", "w") as f:
         json.dump(state, f, indent=1)
-
-
-def read_lines(path):
-    if not os.path.exists(path):
-        return []
-    with open(path, encoding="utf-8") as f:
-        return [l.strip() for l in f if l.strip() and not l.startswith("#")]
-
-
-def find_videos():
-    """All video files in the repo root and in the videos/ folder."""
-    found = []
-    for folder in (".", "videos"):
-        for ext in EXTS:
-            found += glob.glob(os.path.join(folder, f"*.{ext}"))
-            found += glob.glob(os.path.join(folder, f"*.{ext.upper()}"))
-    skip = {"clip.mp4", "source.mp4", "small.mp4"}
-    found = [os.path.normpath(p) for p in found
-             if os.path.basename(p) not in skip]
-    return sorted(set(found))
-
-
-def duration(path):
-    out = subprocess.check_output(
-        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-         "-of", "csv=p=0", path]
-    )
-    return float(out)
 
 
 def get_youtube():
@@ -76,75 +41,35 @@ def get_youtube():
     return build("youtube", "v3", credentials=creds)
 
 
-def pick_video(state):
-    videos = find_videos()
-    if state["file"] and state["file"] in videos:
-        return state["file"]
-    for v in videos:
-        if v not in state["done"]:
-            state["file"] = v
-            state["offset"] = 0
-            return v
-    return None
-
-
-# ---------------- AI title (Gemini, free tier) ----------------
-
-def ask_gemini(model, key, parts):
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-    payload = {
-        "contents": [{"parts": parts}],
-        "generationConfig": {"responseMimeType": "application/json"},
-    }
-    req = urllib.request.Request(
-        url, data=json.dumps(payload).encode(),
-        headers={"Content-Type": "application/json", "x-goog-api-key": key},
-    )
-    with urllib.request.urlopen(req, timeout=120) as r:
-        data = json.load(r)
-    text = data["candidates"][0]["content"]["parts"][0]["text"]
-    return json.loads(text)
-
-
-def ai_title(clip_path, video_name, recent):
-    """Return (title, description) from Gemini, or None if anything fails."""
+def gemini_script(recent):
+    """Optional: ask Gemini for a new script when scripts.json runs out."""
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
-        print("No GEMINI_API_KEY set, skipping AI title.")
         return None
-
     prompt = (
-        "You write titles for YouTube Shorts. Look at this clip and write ONE "
-        "catchy, accurate title (max 60 characters, no hashtags, no quotes) and "
-        "a short description (max 2 sentences). "
-        f"The original file name is: {os.path.basename(video_name)}. "
-        f"Do not repeat these recent titles: {recent}. "
-        'Reply as JSON: {"title": "...", "description": "..."}'
+        f"Write a script for a 40-second YouTube Short about {NICHE}. "
+        "Give practical, well-established advice only; no made-up statistics. "
+        "Reply as JSON: {\"title\": \"max 60 chars\", \"description\": \"1-2 sentences\", "
+        "\"scenes\": [{\"text\": \"about 16 words of narration\", "
+        "\"q\": \"2-4 word visual stock footage search query\"}]} with exactly 6 scenes, "
+        "a strong hook in scene 1 and a call to follow in scene 6. "
+        f"Do not repeat these titles: {recent}."
     )
-
-    parts = [{"text": prompt}]
-    try:
-        # small low-res copy so it can be sent inline
-        subprocess.run(
-            ["ffmpeg", "-y", "-i", clip_path, "-vf", "scale=360:-2", "-r", "5",
-             "-c:v", "libx264", "-crf", "32", "-c:a", "aac", "-b:a", "32k",
-             "small.mp4"],
-            check=True, capture_output=True)
-        if os.path.getsize("small.mp4") < 14 * 1024 * 1024:
-            with open("small.mp4", "rb") as f:
-                b64 = base64.b64encode(f.read()).decode()
-            parts.insert(0, {"inline_data": {"mime_type": "video/mp4", "data": b64}})
-    except Exception as e:
-        print("Could not prepare video for AI, using file name only:", e)
-
+    payload = {"contents": [{"parts": [{"text": prompt}]}],
+               "generationConfig": {"responseMimeType": "application/json"}}
     for model in GEMINI_MODELS:
         try:
-            out = ask_gemini(model, key, parts)
-            title = str(out["title"]).strip().strip('"')
-            desc = str(out.get("description", "")).strip()
-            if title:
-                print(f"AI title from {model}: {title}")
-                return title, desc
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+            req = urllib.request.Request(
+                url, data=json.dumps(payload).encode(),
+                headers={"Content-Type": "application/json", "x-goog-api-key": key})
+            with urllib.request.urlopen(req, timeout=120) as r:
+                data = json.load(r)
+            out = json.loads(data["candidates"][0]["content"]["parts"][0]["text"])
+            assert out["title"] and len(out["scenes"]) >= 3
+            assert all(s["text"] and s["q"] for s in out["scenes"])
+            print("Script generated by", model)
+            return out
         except Exception as e:
             print(f"Gemini model {model} failed: {e}")
     return None
@@ -152,69 +77,45 @@ def ai_title(clip_path, video_name, recent):
 
 def main():
     state = load_state()
-    titles = read_lines("titles.txt")
+    with open("scripts.json", encoding="utf-8") as f:
+        scripts = json.load(f)
 
-    video = pick_video(state)
-    if video is None:
-        print("No new videos found. Upload a video (.mp4) to the repo.")
-        save_state(state)
-        return
-
-    total = duration(video)
-    print(f"Using {video} ({total:.0f}s), offset {state['offset']}s")
-
-    if total <= CLIP_LEN + 1:
-        start, length = 0, min(total, 60)
-    elif state["offset"] + CLIP_LEN > total:
-        state["done"].append(video)
-        state["file"] = None
-        state["offset"] = 0
-        save_state(state)
-        print("Video finished. Next video will be used on the next run.")
-        return
+    if state["script_index"] < len(scripts):
+        script = scripts[state["script_index"]]
+        from_file = True
     else:
-        start, length = state["offset"], CLIP_LEN
+        script = gemini_script(state["recent"][-15:])
+        from_file = False
+        if script is None:
+            print("OUT OF SCRIPTS: add more entries to scripts.json "
+                  "(or fix GEMINI_API_KEY for automatic scripts).")
+            sys.exit(1)
 
-    subprocess.run(
-        ["ffmpeg", "-y", "-ss", str(start), "-i", video,
-         "-t", str(length),
-         "-vf", "crop=ih*9/16:ih,scale=1080:1920",
-         "-c:v", "libx264", "-preset", "fast", "-c:a", "aac", "clip.mp4"],
-        check=True,
-    )
+    credits = build_video(script, "clip.mp4")
 
-    n = state["count"]
-    result = ai_title("clip.mp4", video, state["recent"][-10:])
-    if result:
-        base, desc = result
-    else:
-        base = titles[n] if n < len(titles) else "Daily Clip"
-        desc = base
-    title = f"{base} #Shorts"[:100]
+    title = f"{script['title']} #Shorts"[:100]
+    credit_line = (f"Stock footage: {provider_name()}"
+                   + (f" - {', '.join(credits)}" if credits else ""))
+    description = f"{script.get('description', script['title'])}\n\n{credit_line}\n\n#shorts #studytips"
 
     yt = get_youtube()
     body = {
         "snippet": {
             "title": title,
-            "description": f"{desc}\n\n#shorts",
-            "tags": ["shorts", "daily"],
-            "categoryId": "22",
+            "description": description[:4900],
+            "tags": script.get("tags", ["study tips", "productivity", "students", "shorts"]),
+            "categoryId": "27",  # Education
         },
         "status": {"privacyStatus": PRIVACY, "selfDeclaredMadeForKids": False},
     }
     media = MediaFileUpload("clip.mp4", chunksize=-1, resumable=True)
-    res = yt.videos().insert(part="snippet,status", body=body,
-                             media_body=media).execute()
+    res = yt.videos().insert(part="snippet,status", body=body, media_body=media).execute()
     print("Uploaded video id:", res["id"], "| title:", title)
 
+    if from_file:
+        state["script_index"] += 1
     state["count"] += 1
-    state["recent"] = (state["recent"] + [base])[-20:]
-    if total <= CLIP_LEN + 1:
-        state["done"].append(video)
-        state["file"] = None
-        state["offset"] = 0
-    else:
-        state["offset"] += STEP
+    state["recent"] = (state["recent"] + [script["title"]])[-30:]
     save_state(state)
 
 
