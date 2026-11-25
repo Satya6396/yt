@@ -56,7 +56,7 @@ def gemini_script(recent):
         f"Write the title, description and narration in {language}. "
         "Give practical, well-established advice only; no made-up statistics. "
         "Reply as JSON: {\"title\": \"max 60 chars\", \"description\": \"1-2 sentences\", "
-        "\"scenes\": [{\"text\": \"about 16 words of narration\", "
+        "\"scenes\": [{\"text\": \"about 16 words of narration\"}]} with exactly 6 scenes, "
         "a strong hook in scene 1 and a call to follow in scene 6. "
         f"Do not repeat these titles: {recent}."
     )
