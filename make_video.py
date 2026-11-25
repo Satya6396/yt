@@ -190,8 +190,8 @@ def make_ass(scenes_timing, path):
         "Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,"
         "BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,"
         "BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding\n"
-        f"Style: Default,{FONT},76,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,"
-        "-1,0,0,0,100,100,0,0,1,6,2,2,80,80,520,1\n\n"
+        f"Style: Default,{FONT},82,&H00FFFFFF,&H000000FF,&H00101010,&H78000000,"
+        "-1,0,0,0,100,100,0,0,1,5,3,2,70,70,420,1\n\n"
         "[Events]\nFormat: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text\n"
     )
     lines = []
@@ -237,7 +237,9 @@ def build_video(script, out_path):
 
         run(["ffmpeg", "-y", "-stream_loop", "-1", "-i", raw, "-t", f"{dur:.3f}",
              "-vf", (f"scale={W}:{H}:force_original_aspect_ratio=increase,"
-                     f"crop={W}:{H},fps=30,setsar=1"),
+                     f"crop={W}:{H}:x='(iw-ow)/2+12*sin(t*0.7)':y='(ih-oh)/2+18*cos(t*0.5)',"
+                     "eq=contrast=1.06:saturation=1.12:brightness=0.01,"
+                     "unsharp=5:5:0.35,fps=30,setsar=1"),
              "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
              "-pix_fmt", "yuv420p", seg])
 
