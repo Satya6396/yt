@@ -2,4 +2,4 @@ google-api-python-client
 google-auth
 google-auth-oauthlib
 edge-tts
-gTTS
+gTTS\nPillow\n
