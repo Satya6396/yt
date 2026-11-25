@@ -1,4 +1,4 @@
-"""Builds a vertical Short from code-drawn storyboard scenes + voiceover + captions."""
+"""Builds a vertical Short from a script: free footage + voiceover + captions."""
 import os
 import json
 import random
@@ -9,7 +9,6 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from sketch_board import render_scene
 
 LANG = (os.environ.get("VIDEO_LANG") or "en").lower()      # "en", "hi" (Hindi) or "hinglish"
 DEFAULT_VOICES = {"en": "en-IN-NeerjaNeural", "hi": "hi-IN-SwaraNeural",
@@ -216,17 +215,18 @@ def make_ass(scenes_timing, path):
 # ---------------- build ----------------
 
 def build_video(script, out_path):
+    key = os.environ.get("PEXELS_API_KEY") or os.environ["PIXABAY_API_KEY"]
     shutil.rmtree(WORK, ignore_errors=True)
     os.makedirs(WORK)
 
-    timing = []
+    used, credits, timing = set(), [], []
     seg_names, wav_names = [], []
     t_cursor = 0.0
 
     for i, sc in enumerate(script["scenes"]):
         mp3 = f"{WORK}/s{i}.mp3"
         wav = f"{WORK}/s{i}.wav"
-        still = f"{WORK}/scene{i}.png"
+        raw = f"{WORK}/raw{i}.mp4"
         seg = f"{WORK}/v{i}.mp4"
 
         tts(sc["text"], mp3)
@@ -234,10 +234,30 @@ def build_video(script, out_path):
              "-ar", "44100", "-ac", "1", wav])
         dur = probe(wav)
 
-        # Draw a custom storyboard card from narration; no stock footage/API key.
-        render_scene(sc["text"], still, i)
-        run(["ffmpeg", "-y", "-loop", "1", "-i", still, "-t", f"{dur:.3f}",
-             "-vf", f"scale={W}:{H},zoompan=z='min(zoom+0.0005,1.04)':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={W}x{H}:fps=30,setsar=1",
+        who = get_clip(sc["q"], key, used, raw)
+        if who and who not in credits:
+            credits.append(who)
+
+        # Sketch-board mode converts footage into a high-contrast monochrome
+        # pencil/whiteboard look. VIDEO_STYLE=clean preserves the prior color grade.
+        if VIDEO_STYLE == "sketch_board":
+            visual_filter = (
+                f"scale={W}:{H}:force_original_aspect_ratio=increase,"
+                f"crop={W}:{H}:x='(iw-ow)/2+12*sin(t*0.7)':y='(ih-oh)/2+18*cos(t*0.5)',"
+                "edgedetect=low=0.08:high=0.22:mode=colormix,"
+                "format=gray,eq=contrast=1.35:brightness=0.08,"
+                "fps=30,setsar=1"
+            )
+        else:
+            visual_filter = (
+                f"scale={W}:{H}:force_original_aspect_ratio=increase,"
+                f"crop={W}:{H}:x='(iw-ow)/2+12*sin(t*0.7)':y='(ih-oh)/2+18*cos(t*0.5)',"
+                "eq=contrast=1.06:saturation=1.12:brightness=0.01,"
+                "unsharp=5:5:0.35,fps=30,setsar=1"
+            )
+
+        run(["ffmpeg", "-y", "-stream_loop", "-1", "-i", raw, "-t", f"{dur:.3f}",
+             "-vf", visual_filter,
              "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
              "-pix_fmt", "yuv420p", seg])
 
@@ -245,6 +265,8 @@ def build_video(script, out_path):
         t_cursor += dur
         seg_names.append(f"v{i}.mp4")
         wav_names.append(f"s{i}.wav")
+        os.remove(raw)
+        time.sleep(2)
 
     for name, files in (("videos.txt", seg_names), ("audios.txt", wav_names)):
         with open(f"{WORK}/{name}", "w") as f:
@@ -261,5 +283,5 @@ def build_video(script, out_path):
          "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
          "-c:a", "aac", "-b:a", "128k", "-shortest", out_path])
 
-    print(f"Built {out_path}: {probe(out_path):.1f}s, code-drawn storyboard visuals")
-    return []
+    print(f"Built {out_path}: {probe(out_path):.1f}s, footage by {credits}")
+    return credits
