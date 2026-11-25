@@ -1,4 +1,4 @@
-"""Builds a vertical Short from a script: free Pexels footage + voiceover + captions."""
+"""Builds a vertical Short from a script: free footage + voiceover + captions."""
 import os
 import json
 import random
@@ -20,6 +20,9 @@ W, H = 1080, 1920
 PAD = 0.25          # seconds of silence after each scene
 WORK = "work"
 UA = {"User-Agent": "Mozilla/5.0"}
+# "sketch_board" gives footage a monochrome pencil/whiteboard treatment.
+# Set VIDEO_STYLE=clean to retain the original footage treatment.
+VIDEO_STYLE = (os.environ.get("VIDEO_STYLE") or "sketch_board").lower()
 
 
 def run(cmd):
@@ -184,15 +187,15 @@ def split_words(text, n=4):
 
 def make_ass(scenes_timing, path):
     header = (
-        "[Script Info]\nScriptType: v4.00+\n"
-        f"PlayResX: {W}\nPlayResY: {H}\n\n"
-        "[V4+ Styles]\n"
+        "[Script Info]\\nScriptType: v4.00+\\n"
+        f"PlayResX: {W}\\nPlayResY: {H}\\n\\n"
+        "[V4+ Styles]\\n"
         "Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,"
         "BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,"
-        "BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding\n"
+        "BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding\\n"
         f"Style: Default,{FONT},82,&H00FFFFFF,&H000000FF,&H00101010,&H78000000,"
-        "-1,0,0,0,100,100,0,0,1,5,3,2,70,70,420,1\n\n"
-        "[Events]\nFormat: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text\n"
+        "-1,0,0,0,100,100,0,0,1,5,3,2,70,70,420,1\\n\\n"
+        "[Events]\\nFormat: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text\\n"
     )
     lines = []
     for t0, speech_dur, text in scenes_timing:
@@ -206,7 +209,7 @@ def make_ass(scenes_timing, path):
             lines.append(f"Dialogue: 0,{ass_time(t)},{ass_time(t + d)},Default,,0,0,0,,{safe}")
             t += d
     with open(path, "w", encoding="utf-8") as f:
-        f.write(header + "\n".join(lines) + "\n")
+        f.write(header + "\\n".join(lines) + "\\n")
 
 
 # ---------------- build ----------------
@@ -235,11 +238,26 @@ def build_video(script, out_path):
         if who and who not in credits:
             credits.append(who)
 
+        # Sketch-board mode converts footage into a high-contrast monochrome
+        # pencil/whiteboard look. VIDEO_STYLE=clean preserves the prior color grade.
+        if VIDEO_STYLE == "sketch_board":
+            visual_filter = (
+                f"scale={W}:{H}:force_original_aspect_ratio=increase,"
+                f"crop={W}:{H}:x='(iw-ow)/2+12*sin(t*0.7)':y='(ih-oh)/2+18*cos(t*0.5)',"
+                "edgedetect=low=0.08:high=0.22:mode=colormix,"
+                "format=gray,eq=contrast=1.35:brightness=0.08,"
+                "fps=30,setsar=1"
+            )
+        else:
+            visual_filter = (
+                f"scale={W}:{H}:force_original_aspect_ratio=increase,"
+                f"crop={W}:{H}:x='(iw-ow)/2+12*sin(t*0.7)':y='(ih-oh)/2+18*cos(t*0.5)',"
+                "eq=contrast=1.06:saturation=1.12:brightness=0.01,"
+                "unsharp=5:5:0.35,fps=30,setsar=1"
+            )
+
         run(["ffmpeg", "-y", "-stream_loop", "-1", "-i", raw, "-t", f"{dur:.3f}",
-             "-vf", (f"scale={W}:{H}:force_original_aspect_ratio=increase,"
-                     f"crop={W}:{H}:x='(iw-ow)/2+12*sin(t*0.7)':y='(ih-oh)/2+18*cos(t*0.5)',"
-                     "eq=contrast=1.06:saturation=1.12:brightness=0.01,"
-                     "unsharp=5:5:0.35,fps=30,setsar=1"),
+             "-vf", visual_filter,
              "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
              "-pix_fmt", "yuv420p", seg])
 
@@ -252,7 +270,7 @@ def build_video(script, out_path):
 
     for name, files in (("videos.txt", seg_names), ("audios.txt", wav_names)):
         with open(f"{WORK}/{name}", "w") as f:
-            f.write("".join(f"file '{n}'\n" for n in files))
+            f.write("".join(f"file '{n}'\\n" for n in files))
 
     run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", f"{WORK}/videos.txt",
          "-c", "copy", f"{WORK}/video_all.mp4"])
