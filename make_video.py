@@ -22,10 +22,10 @@ LANG = (os.environ.get("VIDEO_LANG") or "en").lower()      # "en", "hi" (Hindi) 
 DEFAULT_VOICES = {
     "en": "en-IN-NeerjaNeural",
     "hi": "hi-IN-SwaraNeural",
-    "hinglish": "en-IN-NeerjaNeural",
+    "hinglish": "hi-IN-MadhurNeural",   # native Hindi male; or hi-IN-SwaraNeural (female)
 }
-VOICE = os.environ.get("TTS_VOICE") or DEFAULT_VOICES.get(LANG, "en-IN-NeerjaNeural")
-TTS_RATE = os.environ.get("TTS_RATE") or "+12%"
+VOICE = os.environ.get("TTS_VOICE") or DEFAULT_VOICES.get(LANG, "hi-IN-MadhurNeural")
+TTS_RATE = os.environ.get("TTS_RATE") or "+8%"
 TTS_PITCH = os.environ.get("TTS_PITCH") or "+0Hz"
 VIDEO_STYLE = (os.environ.get("VIDEO_STYLE") or "editorial").lower()  # "editorial" or "full"
 MEDIA_MODE = (os.environ.get("MEDIA_MODE") or "photos").lower()       # "photos", "videos" or "hybrid"
@@ -260,15 +260,78 @@ def _fallback_word_timings(text, speech_dur):
     return out
 
 
-def tts_scene(text, out_wav, work_dir, idx):
+def _to_devanagari_scenes(texts):
+    """Optional: convert Roman Hinglish lines to Devanagari for natural Hindi TTS pronunciation."""
+    key = (os.environ.get("GEMINI_API_KEY") or "").strip()
+    if LANG != "hinglish" or not key or not texts:
+        return texts
+    prompt = (
+        "Convert each Hinglish line below into natural Devanagari Hindi script for a Hindi voiceover narrator. "
+        "Keep English brand names/places readable in Devanagari or standard spelling and keep numbers as digits. "
+        "Reply ONLY as a JSON array of strings of the exact same length.\n"
+        + json.dumps(texts, ensure_ascii=False)
+    )
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2},
+    }
+    for model in ("gemini-2.5-flash-lite", "gemini-2.5-flash"):
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json", "x-goog-api-key": key},
+            )
+            with http_open(req, timeout=45, tries=2) as r:
+                data = json.load(r)
+            parts = ((data.get("candidates") or [{}])[0].get("content") or {}).get("parts") or []
+            raw = "\n".join(p["text"] for p in parts if p.get("text") and not p.get("thought")).strip()
+            raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw).strip()
+            out = json.loads(raw)
+            if isinstance(out, list) and len(out) == len(texts) and all(isinstance(x, str) and x.strip() for x in out):
+                print("Hinglish TTS converted to Devanagari via", model)
+                return out
+        except Exception as e:
+            print(f"Devanagari TTS conversion skipped ({model}): {e}")
+    return texts
+
+
+def _map_timings_to_display(display_text, spoken_words, speech_dur):
+    """Align spoken WordBoundary timings onto Roman Hinglish caption tokens."""
+    tokens = display_text.split()
+    if not tokens:
+        return []
+    if not spoken_words:
+        return _fallback_word_timings(display_text, speech_dur)
+    if len(tokens) == len(spoken_words):
+        return [
+            {"text": tok, "start": sw["start"], "dur": sw["dur"]}
+            for tok, sw in zip(tokens, spoken_words)
+        ]
+    t0 = spoken_words[0]["start"]
+    t1 = max(spoken_words[-1]["start"] + spoken_words[-1]["dur"], speech_dur)
+    span = max(t1 - t0, 0.25)
+    weights = [max(len(tok), 2) for tok in tokens]
+    total_w = sum(weights)
+    mapped, cur = [], t0
+    for tok, w in zip(tokens, weights):
+        d = span * w / total_w
+        mapped.append({"text": tok, "start": cur, "dur": d})
+        cur += d
+    return mapped
+
+
+def tts_scene(caption_text, out_wav, work_dir, idx, spoken_text=None):
     """Synthesize speech, trim dead air, and return (total_dur, speech_dur, word_timings)."""
+    speak = spoken_text or caption_text
     raw_mp3 = f"{work_dir}/raw_s{idx}.mp3"
     tmp_wav = f"{work_dir}/tmp_s{idx}.wav"
     words = []
     used_edge = False
 
     try:
-        words = asyncio.run(_edge_tts_stream(text, raw_mp3))
+        words = asyncio.run(_edge_tts_stream(speak, raw_mp3))
         if os.path.exists(raw_mp3) and os.path.getsize(raw_mp3) > 1000:
             used_edge = True
     except Exception as e:
@@ -276,7 +339,8 @@ def tts_scene(text, out_wav, work_dir, idx):
 
     if not used_edge:
         from gtts import gTTS
-        gTTS(text, lang="hi" if LANG == "hi" else "en", tld="co.in").save(raw_mp3)
+        is_hi = LANG == "hi" or any("\u0900" <= ch <= "\u097f" for ch in speak)
+        gTTS(speak, lang="hi" if is_hi else "en", tld="co.in").save(raw_mp3)
         words = []
 
     run(["ffmpeg", "-y", "-i", raw_mp3, "-ar", "44100", "-ac", "1", "-c:a", "pcm_s16le", tmp_wav])
@@ -298,9 +362,7 @@ def tts_scene(text, out_wav, work_dir, idx):
                 })
         words = aligned
 
-    if not words:
-        words = _fallback_word_timings(text, speech_dur)
-
+    words = _map_timings_to_display(caption_text, words, speech_dur)
     return total_dur, speech_dur, words
 
 
@@ -962,13 +1024,14 @@ def build_video(script, out_path):
     t_cursor = 0.0
     total_scenes = len(script["scenes"])
     use_ass = (LANG == "hi")
+    tts_texts = _to_devanagari_scenes([sc["text"] for sc in script["scenes"]])
 
     for i, sc in enumerate(script["scenes"]):
         wav = f"{WORK}/s{i}.wav"
         hud = f"{WORK}/hud{i}.png"
         seg = f"{WORK}/v{i}.mp4"
 
-        dur, speech_dur, words = tts_scene(sc["text"], wav, WORK, i)
+        dur, speech_dur, words = tts_scene(sc["text"], wav, WORK, i, spoken_text=tts_texts[i])
         chunks = group_word_chunks(words, speech_dur)
 
         cap_overlays = []
