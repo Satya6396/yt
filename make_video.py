@@ -881,7 +881,22 @@ def render_scene_hud(script, idx, total_scenes, scene, path):
 
     # Closing Notebook Checklist Card on the final scene
     if not dev and idx == total_scenes - 1:
-        items = script.get("takeaways") or ["Hook Strong", "Stay Focused", "Follow For Daily Tips"]
+        if script.get("takeaways"):
+            items = script["takeaways"]
+        else:
+            derived = []
+            for sc_item in script.get("scenes", [])[:-1]:
+                val = sc_item.get("stat") or extract_stat(sc_item["text"])
+                if val and val not in derived:
+                    derived.append(val)
+            if len(derived) < 2:
+                for sc_item in script.get("scenes", [])[1:-1]:
+                    cl = _short_clause(sc_item["text"], max_words=3)
+                    if cl and cl not in derived:
+                        derived.append(cl)
+                    if len(derived) >= 2:
+                        break
+            items = derived[:2] + ["Follow For More"]
         items = [str(it)[:28] for it in items[:3]]
         c_font = get_font(40, bold=True)
         box_w, box_h = 700, 82 + len(items) * 76
