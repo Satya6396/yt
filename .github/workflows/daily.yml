@@ -34,17 +34,45 @@ jobs:
           VIDEO_STYLE: editorial  # editorial (notebook card + dot grid) or full (full-bleed)
           MEDIA_MODE: photos      # photos (real stock/landmark photos + Ken Burns), hybrid, or videos
           TTS_RATE: "+8%"         # natural, energetic Hindi pacing
+          USE_GEMINI: "false"     # set "true" to generate scripts with Gemini immediately
           SCRIPTS_FILE: scripts_hinglish.json,scripts_facts_hinglish.json   # played in this order
           NICHE: amazing facts about famous places, temples, cars and celebrities
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
         run: python main.py
+
+      - name: Publish Reel RSS feed (Zapier)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MAKE_WEBHOOK_URL: ${{ secrets.MAKE_WEBHOOK_URL }}
+          ENABLE_REELS_FEED: "true"   # set "false" to disable feed.xml / GitHub Release upload
+        run: |
+          if [ "$ENABLE_REELS_FEED" != "true" ]; then exit 0; fi
+          ASSET="clip-${{ github.run_number }}.mp4"
+          cp clip.mp4 "$ASSET"
+          if gh release view latest-reel >/dev/null 2>&1; then
+            gh release upload latest-reel "$ASSET" --clobber
+          else
+            gh release create latest-reel "$ASSET" --title "Latest Reel" --notes "Automated Reel media"
+          fi
+          gh release view latest-reel --json assets --jq '.assets[:-10][].name' | xargs -r -I{} gh release delete-asset latest-reel {} -y || true
+          VIDEO_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/latest-reel/${ASSET}"
+          SIZE=$(stat -c%s "$ASSET")
+          rm -f "$ASSET"
+          python main.py --update-feed "$VIDEO_URL" "clip-${{ github.run_number }}" "$SIZE"
+          if [ -n "$MAKE_WEBHOOK_URL" ]; then
+            python main.py --notify-make "$VIDEO_URL"
+          fi
 
       - name: Save progress
         run: |
           git config user.name "bot"
           git config user.email "bot@users.noreply.github.com"
           git add state.json
+          [ -f feed.xml ] && git add feed.xml || true
           git commit -m "update state" || echo "no changes"
           git push
