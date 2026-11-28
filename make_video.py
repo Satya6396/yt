@@ -1151,7 +1151,7 @@ def build_video(script, out_path):
         "-filter_complex", ";".join(v_filters),
         "-map", v_map, "-map", "1:a",
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
-        "-c:a", "aac", "-b:a", "160k", "-shortest", out_path,
+        "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", "-shortest", out_path,
     ])
 
     print(f"Built {out_path}: {probe(out_path):.1f}s, style={VIDEO_STYLE}, footage by {credits}")
